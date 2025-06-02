@@ -33,7 +33,6 @@ export default function ResetPassword() {
       } else {
         console.log("Something went wrong");
       }
-      setOpenModal(true);
     } finally {
       setLoading(false);
     }
