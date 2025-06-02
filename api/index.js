@@ -6,6 +6,8 @@ import authRouter from "./routes/auth.route.js";
 import { rateLimit } from "express-rate-limit";
 import helmet from "helmet";
 import cors from "cors";
+import { fileURLToPath } from 'url';
+import path from 'path';
 
 dotenv.config();
 
