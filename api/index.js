@@ -24,6 +24,19 @@ app.use(
     credentials: true, // Allows sending cookies (if using refresh tokens)
   })
 );
+
+// Vite Production Static File Setup
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Serve static files from client/dist
+app.use(express.static(path.join(__dirname, "../client/dist")));
+
+// Serve index.html on unmatched routes (for React Router)
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "../client/dist/index.html"));
+});
+
 const dbString = process.env.MONGO_URI.replace(
   "<PASSWORD>",
   process.env.MONGO_PASSWORD
