@@ -29,9 +29,9 @@ export default function ResetPassword() {
         navigate("/verify");
     } catch (error) {
       if (error.response) {
-        setErrors(error.response.data.message);
+        console.log(error.response.data.message);
       } else {
-        setErrors("Something went wrong");
+        console.log("Something went wrong");
       }
       setOpenModal(true);
     } finally {
