@@ -16,7 +16,15 @@ const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
 });
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      connectSrc: ["'self'", 'https://instagram-support-msgm.onrender.com/'],
+    },
+  },
+}));
+
 app.use(express.json());
 app.use(cookieParser());
 app.use(limiter);
