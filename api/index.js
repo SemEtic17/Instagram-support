@@ -20,7 +20,9 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      connectSrc: ["'self'", 'https://instagram-support-msgm.onrender.com/'],
+      connectSrc: ["'self'", 'https://instagram-support-msgm.onrender.com/',
+        'https://firebasestorage.googleapis.com'
+      ],
     },
   },
 }));
