@@ -25,7 +25,7 @@ export default function ResetPassword() {
     setLoading(true);
 
     try {
-      const res = await api.post("/auth/signup", formData);
+      const res = await api.post("/auth/reset-password", formData);
         navigate("/verify");
     } catch (error) {
       if (error.response) {
@@ -51,8 +51,8 @@ export default function ResetPassword() {
 
             {/* Reset Password Form */}
             <form id="formm" onSubmit={handleSubmit} className="flexx direction-columnn">
-              <label htmlFor="name" className="sr-only">Phone, username, or email</label>
-              <input name="name" id="name" onChange={handleChange} placeholder="Phone, username, or email" required />
+              <label htmlFor="name" className="sr-only">username</label>
+              <input name="name" id="name" onChange={handleChange} placeholder="username" required />
 
               <label htmlFor="oldpass" className="sr-only">Old Password</label>
               <input name="oldpass" id="oldpass" onChange={handleChange} type="password" placeholder="Old password" required />

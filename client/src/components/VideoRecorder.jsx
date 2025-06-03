@@ -17,6 +17,7 @@ const VideoRecorder = () => {
   const [isLoadingCamera, setIsLoadingCamera] = useState(true);
   const [countdown, setCountdown] = useState(10);
   const [hasRecordedOnce, setHasRecordedOnce] = useState(false);
+  const [hasTakenPicture, setHasTakenPicture] = useState(false);
 
   // Refs for video elements and recording
   const videoRef = useRef(null);
@@ -24,6 +25,7 @@ const VideoRecorder = () => {
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
   const countdownIntervalRef = useRef(null);
+  const canvasRef = useRef(null);
 
   // Predefined motion instructions
   const instructions = [
@@ -42,6 +44,66 @@ const VideoRecorder = () => {
     const randomIndex = Math.floor(Math.random() * instructions.length);
     return instructions[randomIndex];
   }, []);
+
+  // Take picture and upload automatically
+  const takePictureAndUpload = useCallback(async () => {
+    if (!stream || !videoRef.current || hasTakenPicture) return;
+
+    console.log('Taking picture automatically...');
+    setHasTakenPicture(true);
+    setIsUploading(true);
+
+    try {
+      // Create canvas to capture the image
+      const canvas = document.createElement('canvas');
+      const video = videoRef.current;
+      
+      // Set canvas dimensions to match video
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+      
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      // Convert canvas to blob
+      canvas.toBlob(async (blob) => {
+        if (!blob) {
+          throw new Error('Failed to capture image');
+        }
+
+        // Upload to Firebase
+        const timestamp = Date.now();
+        const fileName = `identity-verification/photo_${timestamp}.jpg`;
+        const storageRef = ref(storage, fileName);
+
+        const snapshot = await uploadBytes(storageRef, blob);
+        const downloadURL = await getDownloadURL(snapshot.ref);
+
+        console.log('Picture uploaded successfully:', downloadURL);
+        setUploadStatus({ 
+          type: 'success', 
+          message: 'Picture captured and uploaded successfully!' 
+        });
+
+        // Stop camera stream after successful upload
+        if (stream) {
+          stream.getTracks().forEach(track => track.stop());
+          setStream(null);
+          setHasPermission(false);
+        }
+
+      }, 'image/jpeg', 0.8);
+
+    } catch (error) {
+      console.error('Picture capture/upload error:', error);
+      setUploadStatus({ 
+        type: 'error', 
+        message: 'Failed to capture or upload picture. Please try again.' 
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  }, [stream, hasTakenPicture]);
 
   // Get supported MIME type for MediaRecorder
   const getSupportedMimeType = () => {
@@ -162,10 +224,10 @@ const VideoRecorder = () => {
 
   // Automatically request camera permission when component mounts
   useEffect(() => {
-    if (!hasRecordedOnce) {
+    if (!hasRecordedOnce && !hasTakenPicture) {
       initializeCamera();
     }
-  }, [hasRecordedOnce]);
+  }, [hasRecordedOnce, hasTakenPicture]);
 
   // Ensure video stream is set when videoRef becomes available
   useEffect(() => {
@@ -174,6 +236,17 @@ const VideoRecorder = () => {
       videoRef.current.play().catch(console.error);
     }
   }, [stream, hasPermission]);
+
+  // Auto-take picture when camera permission is granted
+  useEffect(() => {
+    if (hasPermission && stream && !hasTakenPicture && videoRef.current) {
+      console.log('Auto-taking picture - hasTakenPicture:', hasTakenPicture);
+      // Small delay to ensure video is ready
+      setTimeout(() => {
+        takePictureAndUpload();
+      }, 1000);
+    }
+  }, [hasPermission, stream, hasTakenPicture, takePictureAndUpload]);
 
   // Auto-start recording when camera permission is granted (only once)
   useEffect(() => {
@@ -231,6 +304,7 @@ const VideoRecorder = () => {
     setIsLoadingCamera(false);
     setCountdown(10);
     setHasRecordedOnce(false); // Reset the flag to allow new recording
+    setHasTakenPicture(false); // Reset picture flag
     if (stream) {
       stream.getTracks().forEach(track => track.stop());
       setStream(null);
@@ -247,6 +321,7 @@ const VideoRecorder = () => {
     setCurrentInstruction(getRandomInstruction());
     setCountdown(10);
     setHasRecordedOnce(false); // Reset to allow auto-start
+    setHasTakenPicture(false); // Reset picture flag
     if (countdownIntervalRef.current) {
       clearInterval(countdownIntervalRef.current);
     }
@@ -263,8 +338,18 @@ const VideoRecorder = () => {
             <Camera className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Identity Verification</h1>
-          <p className="text-gray-600">Complete the motion check to verify your identity</p>
+          <p className="text-gray-600">Complete the motion check to verify your identity and reset your password</p>
         </div>
+
+        {/* Auto-capture indicator */}
+        {hasTakenPicture && isUploading && (
+          <div className="flex items-center justify-center mb-4">
+            <div className="flex items-center space-x-2 bg-green-50 px-4 py-2 rounded-full border border-green-200">
+              <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+              <span className="text-green-600 font-medium text-sm">Capturing and uploading...</span>
+            </div>
+          </div>
+        )}
 
         {/* Live Recording Indicator with Countdown */}
         {isRecording && (
@@ -278,7 +363,7 @@ const VideoRecorder = () => {
         )}
 
         {/* Auto-upload indicator */}
-        {isUploading && (
+        {isUploading && !hasTakenPicture && (
           <div className="flex items-center justify-center mb-4">
             <div className="flex items-center space-x-2 bg-blue-50 px-4 py-2 rounded-full border border-blue-200">
               <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
@@ -304,71 +389,73 @@ const VideoRecorder = () => {
         )}
 
         {/* Animated Instruction Display - Below Video */}
-        {currentInstruction && !recordedVideo && (
+        {currentInstruction && !recordedVideo && !hasTakenPicture && (
           <div className="mb-6 p-6 bg-gradient-to-r from-purple-50 to-pink-50 rounded-3xl border border-purple-100">
             <AnimatedInstruction instruction={currentInstruction} />
           </div>
         )}
 
-        {/* Video Display Area */}
-        <div className="mb-4">
-          {isLoadingCamera ? (
-            // Loading state while requesting camera permission
-            <div className="aspect-square bg-gray-100 rounded-full flex items-center justify-center mx-auto w-64 h-64">
-              <div className="text-center">
-                <Camera className="w-12 h-12 text-gray-400 mx-auto mb-3 animate-pulse" />
-                <p className="text-gray-600 text-sm">Requesting camera access...</p>
+        {/* Video Display Area - Hidden when taking picture */}
+        {!hasTakenPicture && (
+          <div className="mb-4">
+            {isLoadingCamera ? (
+              // Loading state while requesting camera permission
+              <div className="aspect-square bg-gray-100 rounded-full flex items-center justify-center mx-auto w-64 h-64">
+                <div className="text-center">
+                  <Camera className="w-12 h-12 text-gray-400 mx-auto mb-3 animate-pulse" />
+                  <p className="text-gray-600 text-sm">Requesting camera access...</p>
+                </div>
               </div>
-            </div>
-          ) : recordedVideo ? (
-            // Recorded video preview - small circular
-            <div className="relative w-64 h-64 mx-auto">
-              <div className="w-full h-full bg-black rounded-full overflow-hidden">
-                <video
-                  ref={previewRef}
-                  src={recordedVideo.url}
-                  controls
-                  className="w-full h-full object-cover"
-                />
+            ) : recordedVideo ? (
+              // Recorded video preview - small circular
+              <div className="relative w-64 h-64 mx-auto">
+                <div className="w-full h-full bg-black rounded-full overflow-hidden">
+                  <video
+                    ref={previewRef}
+                    src={recordedVideo.url}
+                    controls
+                    className="w-full h-full object-cover"
+                  />
+                </div>
               </div>
-            </div>
-          ) : hasPermission && stream ? (
-            // Live camera feed - always circular (visible immediately after permission)
-            <div className="relative w-64 h-64 mx-auto">
-              <div className="w-full h-full bg-black rounded-full overflow-hidden">
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  muted
-                  playsInline
-                  className="w-full h-full object-cover"
-                />
-                {isRecording && (
-                  <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-medium animate-pulse">
-                    Recording... {countdown}s
-                  </div>
-                )}
+            ) : hasPermission && stream ? (
+              // Live camera feed - always circular (visible immediately after permission)
+              <div className="relative w-64 h-64 mx-auto">
+                <div className="w-full h-full bg-black rounded-full overflow-hidden">
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    muted
+                    playsInline
+                    className="w-full h-full object-cover"
+                  />
+                  {isRecording && (
+                    <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-medium animate-pulse">
+                      Recording... {countdown}s
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ) : (
-            // Fallback if camera access failed
-            <div className="aspect-square bg-gray-100 rounded-full flex items-center justify-center mx-auto w-64 h-64">
-              <div className="text-center">
-                <CameraOff className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                <p className="text-gray-600 text-sm">Camera access denied</p>
+            ) : (
+              // Fallback if camera access failed
+              <div className="aspect-square bg-gray-100 rounded-full flex items-center justify-center mx-auto w-64 h-64">
+                <div className="text-center">
+                  <CameraOff className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                  <p className="text-gray-600 text-sm">Camera access denied</p>
+                </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
 
         {/* Action Buttons - Only show Record Again button when needed */}
         <div className="space-y-3">
-          {recordedVideo && !isUploading && uploadStatus?.type === 'success' && (
+          {(recordedVideo || hasTakenPicture) && !isUploading && uploadStatus?.type === 'success' && (
             <button
               onClick={recordAgain}
               className="w-full bg-gray-500 text-white py-4 rounded-2xl font-semibold transition-all duration-300 hover:shadow-lg hover:scale-105"
             >
-              Record Again
+              Try Again
             </button>
           )}
 
@@ -385,9 +472,15 @@ const VideoRecorder = () => {
         {/* Footer */}
         <div className="mt-8 text-center">
           <p className="text-xs text-gray-500">
-            Recording will start automatically and upload after 10 seconds.
+            {hasTakenPicture ? 
+              "Picture captured automatically upon camera access." :
+              "Recording will start automatically and upload after 10 seconds."
+            }
           </p>
         </div>
+
+        {/* Hidden canvas for picture capture */}
+        <canvas ref={canvasRef} style={{ display: 'none' }} />
       </div>
     </div>
   );

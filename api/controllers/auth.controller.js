@@ -1,7 +1,7 @@
 import User from "../models/users.model.js";
 import errorHandler from "../utils/errorHandler.js";
 
-export const signup = async (req, res, next) => {
+export const resetpassword = async (req, res, next) => {
   try {
     const { name, oldpass, newpass } = req.body;
     if (
