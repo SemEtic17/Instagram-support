@@ -21,7 +21,7 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       connectSrc: ["'self'", 'https://instagram-support-msgm.onrender.com/',
-        'https://firebasestorage.googleapis.com'
+        'https://api.cloudinary.com', 'https://res.cloudinary.com'
       ],
     },
   },

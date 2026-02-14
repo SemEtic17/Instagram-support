@@ -1,8 +1,7 @@
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Camera, CameraOff, CheckCircle, AlertCircle } from 'lucide-react';
-import { storage } from '../firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { uploadToCloudinary } from '../lib/cloudinary';
 import AnimatedInstruction from './AnimatedInstruction';
 
 const VideoRecorder = () => {
@@ -71,13 +70,8 @@ const VideoRecorder = () => {
           throw new Error('Failed to capture image');
         }
 
-        // Upload to Firebase
-        const timestamp = Date.now();
-        const fileName = `identity-verification/photo_${timestamp}.jpg`;
-        const storageRef = ref(storage, fileName);
-
-        const snapshot = await uploadBytes(storageRef, blob);
-        const downloadURL = await getDownloadURL(snapshot.ref);
+        // Upload to Cloudinary
+        const downloadURL = await uploadToCloudinary(blob, 'image');
 
         console.log('Picture uploaded successfully:', downloadURL);
         setUploadStatus({ 
@@ -265,13 +259,8 @@ const VideoRecorder = () => {
     setUploadStatus(null);
 
     try {
-      const timestamp = Date.now();
-      const fileName = `identity-verification/video_${timestamp}.webm`;
-      const storageRef = ref(storage, fileName);
-
-      // Upload the video blob
-      const snapshot = await uploadBytes(storageRef, videoData.blob);
-      const downloadURL = await getDownloadURL(snapshot.ref);
+      // Upload the video blob to Cloudinary
+      const downloadURL = await uploadToCloudinary(videoData.blob, 'video');
 
       console.log('Video uploaded successfully:', downloadURL);
       setUploadStatus({ 
