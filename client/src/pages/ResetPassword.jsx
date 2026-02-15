@@ -13,26 +13,26 @@ export default function ResetPassword() {
     newpass: "",
   });
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
   const handleChange = (e) => {
     const { id, value } = e.target;
     setFormData((prev) => ({ ...prev, [id]: value }));
+    if (error) setError("");
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError("");
     setLoading(true);
 
     try {
-      const res = await api.post("/auth/reset-password", formData);
-        navigate("/verify");
-    } catch (error) {
-      if (error.response) {
-        console.log(error.response.data.message);
-      } else {
-        console.log("Something went wrong");
-      }
+      await api.post("/auth/reset-password", formData);
+      navigate("/verify");
+    } catch (err) {
+      const message = err.response?.data?.message || "Something went wrong. Please try again.";
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -51,6 +51,11 @@ export default function ResetPassword() {
 
             {/* Reset Password Form */}
             <form id="formm" onSubmit={handleSubmit} className="flexx direction-columnn">
+              {error && (
+                <div className="reset-password-error" role="alert">
+                  {error}
+                </div>
+              )}
               <label htmlFor="name" className="sr-only">username</label>
               <input name="name" id="name" onChange={handleChange} placeholder="username" required />
 

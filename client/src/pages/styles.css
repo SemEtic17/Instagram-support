@@ -125,6 +125,17 @@ ul { list-style: none; } */
     width: 100%;
 }
 
+.reset-password-error {
+    background-color: #fee;
+    border: 1px solid #fcc;
+    border-radius: 3px;
+    color: #c00;
+    font-size: 14px;
+    margin-bottom: 12px;
+    padding: 10px;
+    text-align: center;
+}
+
 /**
  * Separator login form from login with fb
  */
