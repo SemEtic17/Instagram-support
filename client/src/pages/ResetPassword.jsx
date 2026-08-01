@@ -106,7 +106,7 @@ export default function ResetPassword() {
             <li key={idx}><a href="#">{item}</a></li>
           ))}
         </ul>
-        <p className="copyright">© 2025 Instagram from Meta</p>
+        <p className="copyright">© 2026 Instagram from Meta</p>
       </footer>
     </div>
   );
